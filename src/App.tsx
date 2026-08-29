@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { supabase } from './lib/supabase'
 import InvestigationForm from './components/InvestigationForm'
 import ActivityFeed from './components/ActivityFeed'
@@ -11,6 +11,7 @@ function App() {
   const [currentInvestigation, setCurrentInvestigation] = useState<Investigation | null>(null)
   const [investigationData, setInvestigationData] = useState<InvestigationWithData | null>(null)
   const [loading, setLoading] = useState(false)
+  const iterationIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   useEffect(() => {
     // Check auth status
@@ -25,7 +26,13 @@ function App() {
       setUser(session?.user || null)
     })
 
-    return () => subscription?.unsubscribe()
+    return () => {
+      subscription?.unsubscribe()
+      // Cleanup interval on unmount
+      if (iterationIntervalRef.current) {
+        clearInterval(iterationIntervalRef.current)
+      }
+    }
   }, [])
 
   const loadInvestigationData = async (investigationId: string) => {
@@ -97,16 +104,32 @@ function App() {
   }
 
   const startInvestigationLoop = (investigationId: string) => {
+    // Clear any existing interval
+    if (iterationIntervalRef.current) {
+      clearInterval(iterationIntervalRef.current)
+    }
+
     // Use an interval to trigger iterations
     const interval = setInterval(async () => {
-      if (!currentInvestigation || currentInvestigation.status !== 'running') {
+      // Fetch current investigation status from DB to avoid stale closures
+      const { data: investigation } = await supabase
+        .from('investigations')
+        .select('status')
+        .eq('id', investigationId)
+        .single()
+
+      if (!investigation || investigation.status !== 'running') {
+        // Investigation is not running, stop the loop
         clearInterval(interval)
+        iterationIntervalRef.current = null
         return
       }
 
       await runSingleIteration(investigationId)
       await loadInvestigationData(investigationId)
     }, 3000) // Run iteration every 3 seconds
+
+    iterationIntervalRef.current = interval
   }
 
   const runSingleIteration = async (investigationId: string) => {
@@ -165,6 +188,13 @@ function App() {
 
   const handleStop = async () => {
     if (!currentInvestigation) return
+    
+    // Clear the interval
+    if (iterationIntervalRef.current) {
+      clearInterval(iterationIntervalRef.current)
+      iterationIntervalRef.current = null
+    }
+    
     try {
       const { data } = await supabase
         .from('investigations')

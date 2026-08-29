@@ -8,18 +8,18 @@ interface ActivityFeedProps {
 export default function ActivityFeed({ data }: ActivityFeedProps) {
   const { hypotheses, critiques, sources } = data
 
+  // Only show hypotheses that passed the originality gate (potentially_novel or insufficient_evidence)
+  const displayedHypotheses = hypotheses.filter(h => 
+    h.novelty_status === 'potentially_novel' || 
+    h.novelty_status === 'insufficient_evidence'
+  )
+
   const getNoveltyColor = (status: string) => {
     switch (status) {
       case 'potentially_novel':
         return '#4caf50'
       case 'insufficient_evidence':
         return '#ff9800'
-      case 'modified_version':
-        return '#2196f3'
-      case 'similar_existing':
-        return '#ff5722'
-      case 'clearly_established':
-        return '#9c27b0'
       default:
         return '#666'
     }
@@ -29,13 +29,13 @@ export default function ActivityFeed({ data }: ActivityFeedProps) {
     <div className="activity-feed">
       <h2>Activity Feed</h2>
 
-      {hypotheses.length === 0 ? (
+      {displayedHypotheses.length === 0 ? (
         <div className="empty-state">
-          <p>No hypotheses generated yet. Research is starting...</p>
+          <p>No novel hypotheses yet. Research is starting...</p>
         </div>
       ) : (
         <div className="feed-content">
-          {hypotheses.map((hypothesis) => (
+          {displayedHypotheses.map((hypothesis) => (
             <div key={hypothesis.id} className="feed-item hypothesis-item">
               <div className="hypothesis-header">
                 <h3>{hypothesis.name}</h3>
