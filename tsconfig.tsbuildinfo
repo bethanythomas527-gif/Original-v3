@@ -1,0 +1,1 @@
+{"root":["./src/App.tsx","./src/main.tsx","./src/components/ActivityFeed.tsx","./src/components/InvestigationForm.tsx","./src/components/OverviewReport.tsx","./src/lib/supabase.ts","./src/types/index.ts"],"version":"5.9.3"}
